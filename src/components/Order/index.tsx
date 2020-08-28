@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { TabPanel } from '../../components';
+import { FilterPrice } from '../../filters';
 import { getAmount, getTotalPrice } from '../../helpers';
 import { Decimal, OrderForm } from '../index';
 
@@ -133,7 +134,9 @@ export interface OrderComponentProps {
      * default tab index
      */
     defaultTabIndex?: number;
+    currentMarketFilters: FilterPrice[];
 }
+
 interface State {
     index: number;
     amountSell: string;
@@ -229,6 +232,7 @@ export class Order extends React.Component<OrderComponentProps, State> {
             orderTypesIndex,
             asks,
             bids,
+            currentMarketFilters,
             listenInputPrice,
         } = this.props;
         const { amountSell, amountBuy } = this.state;
@@ -268,6 +272,7 @@ export class Order extends React.Component<OrderComponentProps, State> {
                     listenInputPrice={listenInputPrice}
                     handleAmountChange={this.handleAmountChange}
                     handleChangeAmountByButton={this.handleChangeAmountByButton}
+                    currentMarketFilters={currentMarketFilters}
                 />
             ),
             label: preLabel || label,

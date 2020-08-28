@@ -34,6 +34,7 @@ const defaultProps = {
     handleChangeAmountByButton: spy(),
     amount: '1.5',
     totalPrice: 0,
+    currentMarketFilters: [],
 };
 
 const setup = (props: Partial<OrderFormProps> = {}) =>

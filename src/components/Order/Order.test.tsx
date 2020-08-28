@@ -17,6 +17,7 @@ const defaultProps: OrderComponentProps = {
     to: 'eth',
     asks: [['10','1']],
     bids: [['10','1']],
+    currentMarketFilters: [],
 };
 
 const setup = (props: Partial<OrderComponentProps> = {}) =>

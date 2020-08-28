@@ -1,6 +1,11 @@
 import classnames from 'classnames';
 import * as React from 'react';
 import { Button } from 'react-bootstrap';
+import {
+    FilterPrice,
+    PriceValidation,
+    validatePriceStep,
+} from '../../filters';
 import { cleanPositiveFloatInput, precisionRegExp } from '../../helpers';
 import { Decimal } from '../Decimal';
 import { DropdownComponent } from '../Dropdown';
@@ -102,6 +107,7 @@ export interface OrderFormProps {
     listenInputPrice?: () => void;
     totalPrice: number;
     amount: string;
+    currentMarketFilters: FilterPrice[];
     handleAmountChange: (amount: string, type: FormType) => void;
     handleChangeAmountByButton: (value: number, orderType: string | React.ReactNode, price: string, type: string) => void;
 }
@@ -110,6 +116,7 @@ interface OrderFormState {
     orderType: string | React.ReactNode;
     price: string;
     priceMarket: number;
+    isPriceValid: PriceValidation;
     amountFocused: boolean;
     priceFocused: boolean;
 }
@@ -125,6 +132,10 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
             orderType: 'Limit',
             price: '',
             priceMarket: this.props.priceMarket,
+            isPriceValid: {
+                valid: true,
+                priceStep: 0,
+            },
             priceFocused: false,
             amountFocused: false,
         };
@@ -132,10 +143,9 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
 
     public componentWillReceiveProps(next: OrderFormProps) {
         const nextPriceLimitTruncated = Decimal.format(next.priceLimit, this.props.currentMarketBidPrecision);
+
         if (this.state.orderType === 'Limit' && next.priceLimit && nextPriceLimitTruncated !== this.state.price) {
-            this.setState({
-                price: nextPriceLimitTruncated,
-            });
+            this.handlePriceChange(nextPriceLimitTruncated);
         }
 
         if (this.state.priceMarket !== next.priceMarket) {
@@ -168,6 +178,7 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
             orderType,
             price,
             priceMarket,
+            isPriceValid,
             priceFocused,
             amountFocused,
         } = this.state;
@@ -180,6 +191,10 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
 
         const availablePrecision = type === 'buy' ? currentMarketBidPrecision : currentMarketAskPrecision;
         const availableCurrency = type === 'buy' ? from : to;
+
+        const priceErrorClass = classnames('error-message', {
+            'error-message--visible': priceFocused && !isPriceValid.valid,
+        });
 
         return (
             <div className={classnames('cr-order-form', className)} onKeyPress={this.handleEnterPress}>
@@ -198,6 +213,9 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
                             handleChangeValue={this.handlePriceChange}
                             handleFocusInput={this.handleFieldFocus}
                         />
+                        <div className={priceErrorClass}>
+                            Minimum price step is {isPriceValid.priceStep}
+                        </div>
                     </div>
                 ) : (
                     <div className="cr-order-item">
@@ -318,12 +336,13 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
     };
 
     private handlePriceChange = (value: string) => {
-        const { currentMarketBidPrecision } = this.props;
+        const { currentMarketBidPrecision, currentMarketFilters } = this.props;
         const convertedValue = cleanPositiveFloatInput(String(value));
 
         if (convertedValue.match(precisionRegExp(currentMarketBidPrecision))) {
             this.setState({
                 price: convertedValue,
+                isPriceValid: validatePriceStep(convertedValue, currentMarketFilters),
             });
         }
 
@@ -358,20 +377,17 @@ export class OrderForm extends React.PureComponent<OrderFormProps, OrderFormStat
         };
 
         this.props.onSubmit(order);
-        this.setState({
-            price: '',
-        }, () => {
-            this.props.handleAmountChange('', this.props.type);
-        });
+        this.handlePriceChange('');
+        this.props.handleAmountChange('', this.props.type);
     };
 
     private checkButtonIsDisabled = (): boolean => {
         const { disabled, available, amount, totalPrice } = this.props;
-        const { orderType, priceMarket, price } = this.state;
+        const { isPriceValid, orderType, priceMarket, price } = this.state;
         const safePrice = totalPrice / Number(amount) || priceMarket;
 
         const invalidAmount = Number(amount) <= 0;
-        const invalidLimitPrice = Number(price) <= 0 && orderType === 'Limit';
+        const invalidLimitPrice = orderType === 'Limit' && (Number(price) <= 0 || !isPriceValid.valid);
         const invalidMarketPrice = safePrice <= 0 && orderType === 'Market';
 
         return disabled || !available || invalidAmount || invalidLimitPrice || invalidMarketPrice;

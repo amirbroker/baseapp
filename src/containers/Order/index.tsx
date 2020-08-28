@@ -7,6 +7,7 @@ import {
 } from 'react-intl';
 import { connect } from 'react-redux';
 import { Order, OrderProps, WalletItemProps } from '../../components';
+import { FilterPrice } from '../../filters';
 import { IntlProps } from '../../index';
 import {
     alertPush,
@@ -20,7 +21,12 @@ import {
     Wallet,
     walletsFetch,
 } from '../../modules';
-import { Market, selectCurrentMarket, selectMarketTickers } from '../../modules/public/markets';
+import {
+    Market,
+    selectCurrentMarket,
+    selectCurrentMarketFilters,
+    selectMarketTickers,
+} from '../../modules/public/markets';
 import {
     orderExecuteFetch,
     selectOrderExecuteLoading,
@@ -28,6 +34,7 @@ import {
 
 interface ReduxProps {
     currentMarket: Market | undefined;
+    currentMarketFilters: FilterPrice[];
     executeLoading: boolean;
     marketTickers: {
         [key: string]: {
@@ -124,11 +131,21 @@ class OrderInsert extends React.PureComponent<Props, StoreProps> {
     };
 
     public render() {
-        const { defaultTabIndex, executeLoading, marketTickers, currentMarket, wallets, asks, bids } = this.props;
+        const {
+            asks,
+            bids,
+            currentMarket,
+            currentMarketFilters,
+            defaultTabIndex,
+            executeLoading,
+            marketTickers,
+            wallets,
+        } = this.props;
+        const { priceLimit } = this.state;
+
         if (!currentMarket) {
             return null;
         }
-        const { priceLimit } = this.state;
 
         const walletBase = this.getWallet(currentMarket.base_unit, wallets);
         const walletQuote = this.getWallet(currentMarket.quote_unit, wallets);
@@ -142,6 +159,7 @@ class OrderInsert extends React.PureComponent<Props, StoreProps> {
         );
 
         const translations = this.getListOfTranslations();
+
         return (
             <div className={'pg-order'} ref={this.orderRef}>
                 {this.state.width > 448 ? headerContent : undefined}
@@ -164,6 +182,7 @@ class OrderInsert extends React.PureComponent<Props, StoreProps> {
                     width={this.state.width}
                     listenInputPrice={this.listenInputPrice}
                     defaultTabIndex={defaultTabIndex}
+                    currentMarketFilters={currentMarketFilters}
                     {...translations}
                 />
                 {executeLoading && <div className="pg-order--loading"><Spinner animation="border" variant="primary" /></div>}
@@ -283,6 +302,7 @@ const mapStateToProps = (state: RootState) => ({
     bids: selectDepthBids(state),
     asks: selectDepthAsks(state),
     currentMarket: selectCurrentMarket(state),
+    currentMarketFilters: selectCurrentMarketFilters(state),
     executeLoading: selectOrderExecuteLoading(state),
     marketTickers: selectMarketTickers(state),
     wallets: selectWallets(state),
